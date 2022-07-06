@@ -1,0 +1,231 @@
+Внимание : все должно быть выполнено в среде oracle на pl/sql. В качестве решения необходимо предоставить файлы с написанными запросами, функциями, процедурами и скрипами создания таблиц.
+
+1.	Напишите функцию, которая на вход будет получать два числа, и возвращать сумму этих чисел.
+
+	CREATE OR REPLACE FUNCTION Task1(X in NUMBER, Y in NUMBER) 
+	RETURN NUMBER
+	IS
+		Z NUMBER;
+	BEGIN
+		Z := X + Y;
+		RETURN Z;
+	END Task1;
+
+2. Напишите функцию, которая будет принимать на вход одномерный массив с числами, и возвращать сумму чисел в массиве.
+
+	CREATE TYPE numbers IS TABLE OF NUMBER;
+
+	CREATE OR REPLACE FUNCTION Task2(num1 IN numbers) RETURN NUMBER
+	IS
+		summ NUMBER;
+	BEGIN
+		SELECT SUM(column_value) INTO summ FROM TABLE(num1);
+		RETURN summ;
+	END;
+	
+	DECLARE
+		numbs numbers;
+	BEGIN
+		numbs := numbers();
+		
+		numbs.extend;
+		numbs(numbs.count) := 10;
+		
+		numbs.extend;
+		numbs(numbs.count) := 20;
+		
+		numbs.extend;
+		numbs(numbs.count) := 30;
+		
+		dbms_output.put_line('Сумма = ' || to_char(Task2(numbs)));
+	END;
+
+3. Напишите функцию, которая будет возвращать текущую дату и время в формате dd.mm.yyyy hh24:mi.
+
+	CREATE OR REPLACE FUNCTION date_today
+	RETURN STRING
+	IS
+	BEGIN
+		RETURN to_char (SYSDATE(), 'DD-MM-YYYY HH24:MM:SS');
+	END date_today;
+
+	BEGIN
+		dbms_output.put_line(date_today);
+	END;
+
+
+4. Напишите функцию, которая на вход будет принимать два текстовых параметра, удалять из входных параметров все числа, и выдавать один текстовый параметр склеенный из обработанных входных параметров.
+
+	CREATE OR REPLACE FUNCTION delete_numbers
+	(str1 STRING, str2 STRING) RETURN STRING
+	IS
+		text1 STRING(20);
+		text2 STRING(20);
+		summ STRING(50);
+	BEGIN
+		text1 := REGEXP_REPLACE(str1,'[^[[:alpha:]]]*');
+		text2 := REGEXP_REPLACE(str2,'[^[[:alpha:]]]*');
+		summ := CONCAT(text1,text2);
+		RETURN summ;
+	END delete_numbers;
+
+	BEGIN
+	 dbms_output.put_line(delete_numbers('pr1vet','p0ka'));
+	END;
+
+5. Создайте таблицу chefs (повара), в таблице должен быть идентификатор повара, имя повара, дата рождения повара. Например: Иванов Иван, 01.02.1980.
+
+	CREATE TABLE chefs(
+		chef_id NUMBER GENERATED ALWAYS as IDENTITY(START with 1 INCREMENT by 1),
+		FIO VARCHAR2(60) NOT NULL,
+		birthdate DATE NOT NULL
+		CONSTRAINT CHEF_PK PRIMARY KEY(chef_id) ENABLE
+	);
+
+6. Напишите процедуру, которая будет на вход принимать ФИО повара, его дату рождения и добавлять данные в таблицу chefs. Приложить код заполнение таблицы данными.
+
+	CREATE OR REPLACE PROCEDURE Task6(FIO in VARCHAR2, BD in DATE)
+	IS
+	BEGIN
+		INSERT INTO chefs (FIO, birthdate) VALUES (FIO, BD);
+	END Task6;
+	
+	exec Task6('Жмышенко Альберт Валерьевич', '11-11-1954');
+	exec Task6('Чистяков Константин Алексеевич', '20-06-1995');
+	exec Task6('Теплоухов Сергей Дмитриевич', '28-08-1995');
+	exec Task6('Иванов Иван Иванович', '24-03-1988');
+	exec Task6('Шаталин Максим Викторович', '15-12-1974');
+
+7. Создать таблицу cooking_skills (умение повара), в таблице должен быть идентификатор умения и название умения. Например: Выпекание тортов, выпекание пирожных, утка по пекински. Приложить код заполнение таблицы данными.
+
+	CREATE TABLE COOKING_SKILLS (
+		SKILL_ID NUMBER GENERATED ALWAYS as IDENTITY(START with 1 INCREMENT by 1),
+		SKILL_NAME VARCHAR2(50),
+		CONSTRAINT COOKING_SKILLS_PK PRIMARY KEY(SKILL_ID) ENABLE 
+	);
+
+	INSERT INTO cooking_skills (skill_name) VALUES ('Торты')
+	INSERT INTO cooking_skills (skill_name) VALUES ('Азиатские блюда')
+	INSERT INTO cooking_skills (skill_name) VALUES ('Салаты')
+	INSERT INTO cooking_skills (skill_name) VALUES ('Выпечка')
+	INSERT INTO cooking_skills (skill_name) VALUES ('Пирожные')
+
+8. Создать таблицу chef_skill_links , связь поваров и их умений, в таблице так же должна быть дата с которой повар овладел умением. Приложить код заполнение таблицы данными.
+
+	CREATE TABLE chef_skill_links(
+		chef_id NUMBER NOT NULL,
+		skill_id NUMBER NOT NULL,
+		learn_date DATE NOT NULL,
+		CONSTRAINT fk_chef_id FOREIGN KEY (chef_id) REFERENCES chefs (chef_id),
+		CONSTRAINT fk_skill_id FOREIGN KEY (skill_id) REFERENCES cooking_skills (skill_id)
+	);
+	
+	INSERT INTO chef_skill_links (chef_id, skill_id, learn_date) VALUES (1, 1, '20-05-2008')
+	INSERT INTO chef_skill_links (chef_id, skill_id, learn_date) VALUES (1, 2, '26-02-2012')
+	INSERT INTO chef_skill_links (chef_id, skill_id, learn_date) VALUES (3, 3, '20-11-2020')
+	INSERT INTO chef_skill_links (chef_id, skill_id, learn_date) VALUES (4, 2, '09-03-2012')
+	INSERT INTO chef_skill_links (chef_id, skill_id, learn_date) VALUES (1, 1, '20-05-2008')
+	
+
+9. Написать запрос, который вернет ФИО и даты рождения всех поваров умеющих выпекать торты.
+
+	SELECT chefs.FIO, chefs.birthdate, cooking_skills.skill_name
+	FROM chefs 
+	INNER JOIN chef_skill_links ON chefs.chef_id = chef_skill_links.chef_id
+	INNER JOIN cooking_skills ON chef_skill_links.skill_id = cooking_skills.skill_id AND cooking_skills.skill_name = 'Торты';
+
+10. Написать функцию, которая вернет день рождения самого молодого повара.
+
+	CREATE OR REPLACE FUNCTION Task10 
+	RETURN DATE
+	IS 
+		bd DATE;
+	BEGIN
+        execute immediate 'SELECT MAX(birthdate) FROM chefs' into bd;
+		RETURN bd;
+	END Task10;
+	
+  
+11. Написать запрос, который вернет всех поваров старше 30 лет и перечень умений для каждого из них.
+
+	SELECT chefs.chef_id, chefs.FIO, chefs.birthdate, cooking_skills.skill_name 
+	FROM chefs  
+	INNER JOIN chef_skill_links ON chefs.chef_id = chef_skill_links.chef_id  
+	INNER JOIN cooking_skills ON chef_skill_links.skill_id = cooking_skills.skill_id
+	WHERE months_between(sysdate, chefs.birthdate)/12>30;
+
+12. Написать запрос, который вернет всех поваров научившихся печь пирожные в возрасте моложе 20 лет.
+	SELECT chefs.chef_id, chefs.FIO, chefs.birthdate, cooking_skills.skill_name 
+	FROM chefs  
+	INNER JOIN chef_skill_links ON chefs.chef_id = chef_skill_links.chef_id  
+	INNER JOIN cooking_skills ON chef_skill_links.skill_id = cooking_skills.skill_id
+	WHERE months_between(sysdate, chefs.birthdate)/12<=20 AND cooking_skills.skill_name = 'Пирожные';
+
+13. Написать функцию, которая по идентификатору повара вернёт ФИО повара.
+
+	CREATE OR REPLACE FUNCTION Task13(id in NUMBER) 
+	RETURN VARCHAR2
+	IS 
+		ch_name VARCHAR2(20);
+	BEGIN
+		execute immediate 'SELECT FIO FROM chefs WHERE chefs.chef_id = ' || id into ch_name;
+		RETURN ch_name;
+	END Task13;
+
+
+14. Написать запрос, который вернёт всех поваров у которых фамилия начинается на букву "П".
+
+	SELECT name FROM chefs WHERE name LIKE 'П%';
+  
+
+15. Написать запрос, который вернёт количество поваров в возрастных группах: 10-20, 20-30, 30-40, 40-50, 50-60, 60-70, 70-80, 80-90, 90-100, умеющих варить суп.
+
+	SELECT count(*), age FROM(
+		SELECT
+		CASE 
+			WHEN months_between(sysdate, birthdate)/12 >= 10 AND months_between(sysdate, birthdate)/12 < 20 THEN '10-20'
+			WHEN months_between(sysdate, birthdate)/12 >= 20 AND months_between(sysdate, birthdate)/12 < 30 THEN '20-30'
+			WHEN months_between(sysdate, birthdate)/12 >= 30 AND months_between(sysdate, birthdate)/12 < 40 THEN '30-40'
+			WHEN months_between(sysdate, birthdate)/12 >= 40 AND months_between(sysdate, birthdate)/12 < 50 THEN '40-50'
+			WHEN months_between(sysdate, birthdate)/12 >= 50 AND months_between(sysdate, birthdate)/12 < 60 THEN '50-60'
+			WHEN months_between(sysdate, birthdate)/12 >= 60 AND months_between(sysdate, birthdate)/12 < 70 THEN '60-70'
+			WHEN months_between(sysdate, birthdate)/12 >= 70 AND months_between(sysdate, birthdate)/12 < 80 THEN '70-80'
+			WHEN months_between(sysdate, birthdate)/12 >= 80 AND months_between(sysdate, birthdate)/12 < 90 THEN '80-90'
+			WHEN months_between(sysdate, birthdate)/12 >= 90 AND months_between(sysdate, birthdate)/12 < 100 THEN '90-100'
+		END AS age
+		FROM chefs)
+	GROUP BY age
+	
+	
+
+16. Предложите дополнительные таблицы для разделения умений поваров на группы и категории.
+Например:
+группы - холодные закуски, гарниры, выпечка, десерты;
+категории - сложные рецепты, легкие рецепты, рецепты требующие особых навыков.
+(приложить скрипты создания таблиц и заполнения данными)
+
+	CREATE TABLE skill_groups(
+		group_id NUMBER GENERATED ALWAYS as IDENTITY(START with 1 INCREMENT by 1),
+		group_name VARCHAR2(30) NOT NULL,
+		CONSTRAINT SKILL_GROUPS_PK PRIMARY KEY(group_id)
+	)
+
+	CREATE TABLE skill_categories(
+		categories_id NUMBER GENERATED ALWAYS as IDENTITY(START with 1 INCREMENT by 1),
+		categories_name VARCHAR2(30) NOT NULL,
+		CONSTRAINT SKILL_CATEGORIES_PK PRIMARY KEY(categories_id)
+	)
+
+	INSERT INTO skill_groups (group_name) VALUES ('Детское меню')
+	INSERT INTO skill_groups (group_name) VALUES ('Ланч')
+	INSERT INTO skill_groups (group_name) VALUES ('Завтрак')
+	INSERT INTO skill_groups (group_name) VALUES ('Комбо-набор')
+	INSERT INTO skill_groups (group_name) VALUES ('Сеты')
+	
+	INSERT INTO skill_categories (categories_name) VALUES ('Фастфуд')
+	INSERT INTO skill_categories (categories_name) VALUES ('Азиатские блюда')
+	INSERT INTO skill_categories (categories_name) VALUES ('Русская кухня')
+	INSERT INTO skill_categories (categories_name) VALUES ('Грузинская кухня')
+	INSERT INTO skill_categories (categories_name) VALUES ('Полезная еда')
+	
+	Дополнительно потребуются связующие таблицы по аналогии с chef_skill_links
